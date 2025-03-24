@@ -1,52 +1,68 @@
 import streamlit as st
 import pandas as pd
 
-# === Load Data ===
-top5_df = pd.read_csv("top_5_recommendations.csv")
-game_data = pd.read_csv("top_100_bgg.csv")
-profiles = pd.read_csv("player_preference_profiles.csv")
+# === Setup ===
+st.set_page_config(page_title="Group Board Game Recommender", layout="wide")
+st.title("🎲 Group Board Game Recommender (Collaborative Filtering)")
 
-# === Prepare Attribute Map ===
-game_attr_map = {}
-for _, row in game_data.iterrows():
-    game = row["name"]
-    mechanics = str(row["mechanics"]).split(", ") if pd.notna(row["mechanics"]) else []
-    categories = str(row["categories"]).split(", ") if pd.notna(row["categories"]) else []
-    game_attr_map[game] = mechanics + categories
+# === Load prediction matrix ===
+pred_df = pd.read_csv("player_game_prediction_matrix.csv", index_col="Player")
 
-# === Streamlit UI ===
-st.set_page_config(page_title="Board Game Recommender", layout="wide")
-st.title("🎲 Personalized Board Game Recommender")
+# === Game source toggle ===
+game_source = st.radio("🗂 Choose game list:", ["Top 100 BGG", "Owned Games", "Top 50 Hotness BGG"])
 
-player_names = top5_df["Player"].unique()
-selected_player = st.selectbox("Choose a player", player_names)
+if game_source == "Top 100 BGG":
+    game_df = pd.read_csv("top_100_bgg.csv")
+elif game_source == "Owned Games":
+    game_df = pd.read_csv("owned_games.csv")
+else:
+    game_df = pd.read_csv("top_50_hotness_bgg.csv")
 
-st.subheader(f"Top 5 Recommendations for {selected_player}")
+# Normalize game names
+available_games = set(game_df["name"].str.strip())
 
-# === Display Top 5 with Reasoning ===
-for _, row in top5_df[top5_df["Player"] == selected_player].sort_values(by="Score", ascending=False).iterrows():
-    game = row["Game"]
-    score = row["Score"]
-    st.markdown(f"### 🎮 {game} — Score: `{score}`")
+# === Player selection ===
+players = pred_df.index.tolist()
+selected_players = st.multiselect("👥 Select up to 10 players:", players, max_selections=10)
 
-    attributes = game_attr_map.get(game, [])
-    matching_attrs = []
+if not selected_players:
+    st.warning("Please select at least one player.")
+    st.stop()
 
-    for attr in attributes:
-        mechanic_key = f"mechanic::{attr}"
-        category_key = f"category::{attr}"
-        score_mech = profiles.loc[profiles["Player"] == selected_player, mechanic_key].values[0] if mechanic_key in profiles.columns else 0
-        score_cat = profiles.loc[profiles["Player"] == selected_player, category_key].values[0] if category_key in profiles.columns else 0
-        if score_mech > 0:
-            matching_attrs.append(f"❤️ Mechanic: {attr} (+{score_mech})")
-        if score_cat > 0:
-            matching_attrs.append(f"❤️ Category: {attr} (+{score_cat})")
+# === Filters ===
+st.sidebar.header("🔎 Game Filters")
 
-    if matching_attrs:
-        st.markdown("**Why this game?**")
-        for reason in matching_attrs:
-            st.markdown(f"- {reason}")
-    else:
-        st.markdown("_No strong preference match, but still recommended!_")
+weight_min, weight_max = st.sidebar.slider("🧠 Game Weight (Complexity)", 1.0, 5.0, (1.0, 5.0), step=0.1)
+min_players_filter = st.sidebar.slider("👥 Min Player Count", 1, 10, (1, 10))
+max_players_filter = st.sidebar.slider("👥 Max Player Count", 1, 10, (1, 10))
 
-    st.markdown("---")
+# === Calculate group predictions ===
+group_preds = pred_df.loc[selected_players]
+avg_scores = group_preds.mean().sort_values(ascending=False)
+filtered_scores = avg_scores[avg_scores.index.isin(available_games)]
+
+# Merge game data
+merged = pd.DataFrame({"name": filtered_scores.index, "score": filtered_scores.values})
+merged = merged.merge(game_df, on="name", how="left")
+
+# Apply filters
+filtered = merged[
+    (merged["weight"].astype(float).between(weight_min, weight_max, inclusive="both")) &
+    (merged["min_players"].astype(int).between(min_players_filter[0], min_players_filter[1], inclusive="both")) &
+    (merged["max_players"].astype(int).between(max_players_filter[0], max_players_filter[1], inclusive="both"))
+]
+
+# === Show Top 5 ===
+top5 = filtered.sort_values(by="score", ascending=False).head(5)
+
+st.subheader(f"🎯 Top 5 Games Recommended for Group: {', '.join(selected_players)}")
+
+if top5.empty:
+    st.warning("No games match your filter criteria.")
+else:
+    for _, row in top5.iterrows():
+        st.markdown(f"### 🎮 {row['name']} — Avg Predicted Score: `{row['score']:.2f}`")
+        st.markdown(f"- 👥 Players: {row['min_players']}–{row['max_players']}")
+        st.markdown(f"- 🧠 Weight: {row['weight']}")
+        st.markdown("- 🤝 Recommended based on your group's predicted enjoyment.")
+        st.markdown("---")
