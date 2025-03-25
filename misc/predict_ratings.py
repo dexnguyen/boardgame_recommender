@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
 # === 1. Load rating matrix ===
-ratings = pd.read_csv("player_game_rating_matrix.csv", index_col="Player")
+ratings = pd.read_csv("../data/player_game_rating_matrix.csv", index_col="Player")
 
 # === 2. Fill NaNs with 0 for similarity calc only
 ratings_filled = ratings.fillna(0)
@@ -37,5 +37,5 @@ for player in ratings.index:
             predicted_ratings.loc[player, game] = predicted_score
 
 # === 5. Save predicted matrix ===
-predicted_ratings.to_csv("player_game_prediction_matrix.csv")
+predicted_ratings.to_csv("../data/player_game_prediction_matrix.csv")
 print("✅ Predicted ratings saved to 'player_game_prediction_matrix.csv'")

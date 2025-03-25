@@ -3,7 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # === 1. Load predicted matrix ===
-df = pd.read_csv("player_game_prediction_matrix.csv", index_col="Player")
+df = pd.read_csv("../data/player_game_prediction_matrix.csv", index_col="Player")
 
 # === 2. Create heatmap ===
 plt.figure(figsize=(len(df.columns) * 0.5 + 5, len(df.index) * 0.6 + 3))

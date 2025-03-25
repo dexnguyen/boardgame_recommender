@@ -1,7 +1,7 @@
 import pandas as pd
 
 # === 1. Load responses ===
-df = pd.read_csv("player_responses.csv")
+df = pd.read_csv("../data/player_responses.csv")
 
 # === 2. Remove timestamp if it exists ===
 if "Timestamp" in df.columns:
@@ -29,5 +29,5 @@ converted = converted.rename(columns={"Your name": "Player"})
 converted.set_index("Player", inplace=True)
 
 # === 6. Save output ===
-converted.to_csv("player_game_rating_matrix.csv")
+converted.to_csv("../data/player_game_rating_matrix.csv")
 print("✅ Cleaned rating matrix saved as 'player_game_rating_matrix.csv'")

@@ -2,9 +2,9 @@ import pandas as pd
 from collections import defaultdict
 
 # === CONFIGURATION ===
-RESPONSES_FILE = "player_responses.csv"
-OWNED_GAMES_FILE = "owned_games.csv"
-OUTPUT_FILE = "player_preference_profiles.csv"
+RESPONSES_FILE = "../data/player_responses.csv"
+OWNED_GAMES_FILE = "../data/owned_games.csv"
+OUTPUT_FILE = "../data/player_preference_profiles.csv"
 
 # === 1. Load data ===
 responses_df = pd.read_csv(RESPONSES_FILE)
